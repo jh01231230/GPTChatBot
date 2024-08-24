@@ -1,27 +1,31 @@
 import os
-import openai
+from openai import OpenAI
 
-# Need to set 'OPENAI_KEY' as the environment variable and assign the key value
-openai.api_key = os.getenv("OPENAI_KEY")
+# Need to set 'OPENAI_API_KEY' as the environment variable
 
 class ChatGPT(object):
     def __init__(self):
         self.messages = []
+        self.client = OpenAI()
         
         # Role prompt for GPT
         self.process_inquiry("Please act like Jarvis from Iron Man and please be concise.")
         
-    def send_to_chatgpt(self, messages, model="gpt-3.5-turbo", max_tokens=100):
-        response = openai.ChatCompletion.create(
+    def send_to_chatgpt(self, messages, model="gpt-4o", max_tokens=100):
+        stream = self.client.chat.completions.create(
             model=model,
             messages=messages,
-            max_tokens=max_tokens,
-            n=1,
-            stop=None,
-            temperature=0.5
+            stream=True
         )
-        self.messages.append(response.choices[0].message)
-        message = response.choices[0].message.content
+        text = ""
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                if chunk.choices[0].delta.role is not None:
+                    role = chunk.choices[0].delta.role
+                text += chunk.choices[0].delta.content
+        
+        self.messages.append({"role": role, "content": text})
+        message = text
         message = message.replace("/", " or ")
         
         return message
@@ -31,17 +35,18 @@ class ChatGPT(object):
         self.messages.append(message)
         return self.send_to_chatgpt(self.messages)
         
-    def sense_check(self, text):
+    def inquiry_validity_check(self, text):
         message = [{"role": "user", "content": "\"" + text + "\"" + " makes sense? Answer yes or no."}]
-        response = openai.ChatCompletion.create(
+        stream = self.client.chat.completions.create(
             model="gpt-4",
             messages=message,
-            max_tokens=10,
-            n=1,
-            stop=None,
-            temperature=0.2
+            stream=True
         )
-        print("Sense check response: ", response.choices[0].message.content)
-        if response.choices[0].message.content == "Yes":
+        text = ""
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                text += chunk.choices[0].delta.content
+        print("Inquiry validity check response: ", text)
+        if text == "Yes":
             return True
         return False

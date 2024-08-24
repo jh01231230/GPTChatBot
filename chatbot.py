@@ -106,8 +106,8 @@ class ChatBot(object):
                 print("Received voice, doing sense check.")
                 if not text:
                     continue
-                if self.gpt.sense_check(text):
-                    print("Sense check passed, sending request to GPT.")
+                if self.gpt.inquiry_validity_check(text):
+                    print("Validity check passed, sending request to GPT.")
                     
                     # Send inquries to GPT engine and get the reply
                     response = self.gpt.process_inquiry(text)
